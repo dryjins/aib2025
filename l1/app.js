@@ -113,7 +113,7 @@ function analyzeRandomReview() {
 // Call Hugging Face API for sentiment analysis
 async function analyzeSentiment(text) {
     const response = await fetch(
-        'https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english',
+        'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english',
         {
             headers: { Authorization: `Bearer ${apiToken}` },
             method: 'POST',
