@@ -1,225 +1,191 @@
-// Global variables
-let reviews = [];
-const tsvUrl = 'https://raw.githubusercontent.com/your-repo/main/reviews_test.tsv'; // Replace with your actual URL
+class ReviewAnalyzer {
+    constructor() {
+        this.reviews = [];
+        this.apiToken = '';
+        this.initializeApp();
+    }
 
-// DOM elements
-const apiTokenInput = document.getElementById('api-token');
-const analyzeBtn = document.getElementById('analyze-btn');
-const loadingElement = document.getElementById('loading');
-const errorElement = document.getElementById('error');
-const resultElement = document.getElementById('result');
-const sentimentLabel = document.getElementById('sentiment-label');
-const reviewText = document.getElementById('review-text');
+    initializeApp() {
+        this.loadTSVFile();
+        this.setupEventListeners();
+    }
 
-// Load TSV data when the page loads
-document.addEventListener('DOMContentLoaded', loadTsvData);
+    loadTSVFile() {
+        // Using PapaParse to load and parse the TSV file
+        Papa.parse('reviews_test.tsv', {
+            download: true,
+            header: true,
+            delimiter: '\t',
+            complete: (results) => {
+                this.reviews = results.data.filter(review => review.text && review.text.trim() !== '');
+                this.updateStatus('TSV file loaded successfully! Ready to analyze reviews.', 'success');
+                document.getElementById('analyzeBtn').disabled = false;
+            },
+            error: (error) => {
+                this.updateStatus('Error loading TSV file: ' + error.message, 'error');
+            }
+        });
+    }
 
-// Event listener for the analyze button
-analyzeBtn.addEventListener('click', analyzeRandomReview);
+    setupEventListeners() {
+        const apiTokenInput = document.getElementById('apiToken');
+        const analyzeBtn = document.getElementById('analyzeBtn');
 
-// Function to load TSV data
-async function loadTsvData() {
-    try {
-        analyzeBtn.disabled = true;
-        analyzeBtn.textContent = 'Loading reviews...';
+        apiTokenInput.addEventListener('input', () => {
+            this.apiToken = apiTokenInput.value.trim();
+            analyzeBtn.disabled = !this.apiToken || this.reviews.length === 0;
+        });
+
+        analyzeBtn.addEventListener('click', () => {
+            this.analyzeRandomReview();
+        });
+    }
+
+    getRandomReview() {
+        if (this.reviews.length === 0) {
+            throw new Error('No reviews available');
+        }
         
-        const response = await fetch(tsvUrl);
+        const randomIndex = Math.floor(Math.random() * this.reviews.length);
+        const review = this.reviews[randomIndex];
+        
+        return {
+            text: review.text,
+            sentiment: review.sentiment,
+            summary: review.summary,
+            productId: review.productId
+        };
+    }
+
+    async analyzeRandomReview() {
+        try {
+            this.updateStatus('Analyzing review...', 'loading');
+            
+            const review = this.getRandomReview();
+            this.displayReview(review);
+            
+            const sentiment = await this.callHuggingFaceAPI(review.text);
+            this.displaySentiment(sentiment);
+            
+            this.updateStatus('Analysis complete!', 'success');
+            
+        } catch (error) {
+            this.updateStatus('Error: ' + error.message, 'error');
+        }
+    }
+
+    async callHuggingFaceAPI(reviewText) {
+        if (!this.apiToken) {
+            throw new Error('API token is required');
+        }
+
+        const prompt = `Analyze the following product review and classify its sentiment as positive, negative, or neutral. 
+        Only respond with one word: "positive", "negative", or "neutral".
+
+        Review: "${reviewText}"
+
+        Sentiment:`;
+
+        const response = await fetch(
+            'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3.1',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    inputs: prompt,
+                    parameters: {
+                        max_new_tokens: 10,
+                        temperature: 0.1
+                    }
+                })
+            }
+        );
+
         if (!response.ok) {
-            throw new Error(`Failed to load TSV file: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `API request failed with status ${response.status}`);
         }
-        
-        const tsvData = await response.text();
-        reviews = parseTsv(tsvData);
-        
-        analyzeBtn.disabled = false;
-        analyzeBtn.textContent = 'Analyze Random Review';
-    } catch (error) {
-        showError(`Error loading reviews: ${error.message}`);
-        analyzeBtn.textContent = 'Failed to load reviews';
-    }
-}
 
-// Function to parse TSV data
-function parseTsv(tsvData) {
-    const lines = tsvData.split('\n');
-    const headers = lines[0].split('\t');
-    const textIndex = headers.indexOf('text');
-    
-    if (textIndex === -1) {
-        throw new Error('TSV file does not contain a "text" column');
-    }
-    
-    const reviews = [];
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line) {
-            const columns = line.split('\t');
-            if (columns.length > textIndex) {
-                reviews.push(columns[textIndex]);
-            }
+        const data = await response.json();
+        
+        if (!data || !data[0] || !data[0].generated_text) {
+            throw new Error('Invalid response from API');
         }
-    }
-    
-    return reviews;
-}
 
-// Function to analyze a random review
-async function analyzeRandomReview() {
-    // Hide previous results and errors
-    hideError();
-    hideResult();
-    
-    // Validate API token
-    const apiToken = apiTokenInput.value.trim();
-    if (!apiToken) {
-        showError('Please enter your Hugging Face API token');
-        return;
-    }
-    
-    // Validate that reviews are loaded
-    if (reviews.length === 0) {
-        showError('No reviews loaded. Please try again later.');
-        return;
-    }
-    
-    // Show loading state
-    showLoading();
-    analyzeBtn.disabled = true;
-    
-    try {
-        // Select a random review
-        const randomIndex = Math.floor(Math.random() * reviews.length);
-        const selectedReview = reviews[randomIndex];
+        // Extract the sentiment from the response
+        const generatedText = data[0].generated_text.toLowerCase();
+        let sentiment = 'neutral';
         
-        // Call Hugging Face API
-        const sentiment = await analyzeSentiment(selectedReview, apiToken);
-        
-        // Display results
-        displayResult(sentiment, selectedReview);
-    } catch (error) {
-        showError(`Analysis failed: ${error.message}`);
-    } finally {
-        // Hide loading state and re-enable button
-        hideLoading();
-        analyzeBtn.disabled = false;
-    }
-}
+        if (generatedText.includes('positive')) {
+            sentiment = 'positive';
+        } else if (generatedText.includes('negative')) {
+            sentiment = 'negative';
+        }
 
-// Function to call Hugging Face API
-async function analyzeSentiment(reviewText, apiToken) {
-    const apiUrl = 'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3.1';
-    
-    const prompt = `Analyze the sentiment of the following product review as 'positive', 'negative', or 'neutral':
-    
-    Review: "${reviewText}"
-    
-    Sentiment:`;
-    
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-                max_new_tokens: 10,
-                return_full_text: false
-            }
-        })
-    });
-    
-    if (!response.ok) {
-        if (response.status === 401) {
-            throw new Error('Invalid API token');
-        } else if (response.status === 503) {
-            throw new Error('Model is loading, please try again in a few moments');
-        } else {
-            throw new Error(`API request failed with status ${response.status}`);
+        return sentiment;
+    }
+
+    displayReview(review) {
+        document.getElementById('reviewText').textContent = review.text;
+        document.getElementById('result').style.display = 'block';
+    }
+
+    displaySentiment(sentiment) {
+        const iconElement = document.getElementById('sentimentIcon');
+        const textElement = document.getElementById('sentimentText');
+        
+        switch(sentiment) {
+            case 'positive':
+                iconElement.textContent = '👍';
+                textElement.textContent = 'Positive Sentiment';
+                textElement.style.color = '#2e7d32';
+                break;
+            case 'negative':
+                iconElement.textContent = '👎';
+                textElement.textContent = 'Negative Sentiment';
+                textElement.style.color = '#d32f2f';
+                break;
+            case 'neutral':
+                iconElement.textContent = '❓';
+                textElement.textContent = 'Neutral Sentiment';
+                textElement.style.color = '#666';
+                break;
+            default:
+                iconElement.textContent = '❓';
+                textElement.textContent = 'Unknown Sentiment';
+                textElement.style.color = '#666';
         }
     }
-    
-    const data = await response.json();
-    
-    // Extract the generated text
-    if (!data || !data[0] || !data[0].generated_text) {
-        throw new Error('Invalid response from API');
-    }
-    
-    const generatedText = data[0].generated_text.toLowerCase().trim();
-    
-    // Extract sentiment from the response
-    if (generatedText.includes('positive')) {
-        return 'positive';
-    } else if (generatedText.includes('negative')) {
-        return 'negative';
-    } else if (generatedText.includes('neutral')) {
-        return 'neutral';
-    } else {
-        // If the model didn't return a clear sentiment, try to parse it
-        const sentimentMatch = generatedText.match(/(positive|negative|neutral)/);
-        if (sentimentMatch) {
-            return sentimentMatch[0];
-        } else {
-            throw new Error('Could not determine sentiment from API response');
+
+    updateStatus(message, type = 'info') {
+        const statusElement = document.getElementById('status');
+        statusElement.innerHTML = '';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        
+        switch(type) {
+            case 'error':
+                messageDiv.className = 'error';
+                break;
+            case 'success':
+                messageDiv.className = 'success';
+                break;
+            case 'loading':
+                messageDiv.className = 'loading';
+                break;
+            default:
+                messageDiv.className = 'info';
         }
+        
+        statusElement.appendChild(messageDiv);
     }
 }
 
-// Function to display results
-function displayResult(sentiment, review) {
-    // Set appropriate class and icon based on sentiment
-    resultElement.className = 'result';
-    
-    let icon, label;
-    switch(sentiment) {
-        case 'positive':
-            resultElement.classList.add('positive');
-            icon = '👍';
-            label = 'Positive Sentiment';
-            break;
-        case 'negative':
-            resultElement.classList.add('negative');
-            icon = '👎';
-            label = 'Negative Sentiment';
-            break;
-        case 'neutral':
-            resultElement.classList.add('neutral');
-            icon = '❓';
-            label = 'Neutral Sentiment';
-            break;
-        default:
-            icon = '❓';
-            label = 'Unknown Sentiment';
-    }
-    
-    // Update the UI
-    sentimentLabel.innerHTML = `<span class="icon">${icon}</span> ${label}`;
-    reviewText.textContent = review;
-    
-    // Show the result
-    resultElement.style.display = 'block';
-}
-
-// UI helper functions
-function showLoading() {
-    loadingElement.style.display = 'block';
-}
-
-function hideLoading() {
-    loadingElement.style.display = 'none';
-}
-
-function showError(message) {
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-}
-
-function hideError() {
-    errorElement.style.display = 'none';
-}
-
-function hideResult() {
-    resultElement.style.display = 'none';
-}
+// Initialize the app when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new ReviewAnalyzer();
+});
