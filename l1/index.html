@@ -4,270 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Sentiment Analyzer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
         body {
-            background: linear-gradient(135deg, #6e8efb, #a777e3);
-            color: #333;
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 800px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin: 20px 0;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
         }
-        
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 2.5rem;
-        }
-        
-        .description {
+        header {
             text-align: center;
             margin-bottom: 30px;
-            color: #555;
-            font-size: 1.1rem;
-            line-height: 1.6;
         }
-        
-        .input-section {
-            margin-bottom: 25px;
+        h1 {
+            color: #2c3e50;
         }
-        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #2c3e50;
         }
-        
         input[type="text"] {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 16px;
-            transition: border-color 0.3s;
+            box-sizing: border-box;
         }
-        
-        input[type="text"]:focus {
-            border-color: #6e8efb;
-            outline: none;
-        }
-        
         button {
-            background: linear-gradient(to right, #6e8efb, #a777e3);
+            background-color: #3498db;
             color: white;
             border: none;
-            padding: 14px 25px;
-            border-radius: 8px;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 16px;
             font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: block;
-            margin: 0 auto;
-            width: 200px;
+            transition: background-color 0.3s;
         }
-        
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            background-color: #2980b9;
         }
-        
-        button:active {
-            transform: translateY(0);
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
         }
-        
-        .result-section {
+        .result-container {
             margin-top: 30px;
             padding: 20px;
-            border-radius: 10px;
-            background: #f8f9fa;
+            border-radius: 8px;
+            background-color: #f8f9fa;
             display: none;
         }
-        
-        .review-box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
+        .review-text {
+            font-style: italic;
             margin-bottom: 20px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-            max-height: 300px;
-            overflow-y: auto;
+            padding: 15px;
+            background-color: #f1f3f5;
+            border-left: 4px solid #3498db;
         }
-        
         .sentiment-result {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 1.2rem;
+            gap: 15px;
+            font-size: 18px;
             font-weight: 600;
         }
-        
-        .positive {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        
-        .negative {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
-        .neutral {
-            background: #fff8e1;
-            color: #f57f17;
-        }
-        
         .icon {
-            font-size: 2rem;
-            margin-right: 15px;
+            font-size: 24px;
         }
-        
+        .positive {
+            color: #27ae60;
+        }
+        .negative {
+            color: #e74c3c;
+        }
+        .neutral {
+            color: #f39c12;
+        }
         .loading {
             display: none;
             text-align: center;
             margin: 20px 0;
         }
-        
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #6e8efb;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
         .error {
-            color: #c62828;
-            background: #ffebee;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
+            color: #e74c3c;
+            margin-top: 10px;
             display: none;
-        }
-        
-        .instructions {
-            background: #e3f2fd;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-        
-        .instructions h3 {
-            color: #1565c0;
-            margin-bottom: 15px;
-        }
-        
-        .instructions ol {
-            margin-left: 20px;
-            line-height: 1.6;
-        }
-        
-        .instructions li {
-            margin-bottom: 10px;
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            color: white;
-            font-size: 0.9rem;
-        }
-        
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            button {
-                width: 100%;
-            }
         }
     </style>
 </head>
 <body>
+    <header>
+        <h1>Product Review Sentiment Analyzer</h1>
+        <p>Analyze random product reviews using Hugging Face's sentiment analysis model</p>
+    </header>
+    
     <div class="container">
-        <h1>Review Sentiment Analyzer</h1>
-        <p class="description">
-            Analyze the sentiment of product reviews using AI. Enter your Hugging Face API token, 
-            then click "Analyze Random Review" to see if a review is positive, negative, or neutral.
-        </p>
-        
-        <div class="input-section">
-            <label for="apiToken">Hugging Face API Token:</label>
-            <input type="text" id="apiToken" placeholder="Enter your Hugging Face API token">
+        <div class="input-group">
+            <label for="api-token">Hugging Face API Token (free tier available)</label>
+            <input type="text" id="api-token" placeholder="Enter your Hugging Face API token">
         </div>
         
-        <button id="analyzeBtn">Analyze Random Review</button>
+        <button id="analyze-btn">Analyze Random Review</button>
         
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Analyzing sentiment...</p>
+        <div class="loading" id="loading">
+            <p>Analyzing review sentiment...</p>
         </div>
         
-        <div class="error" id="errorMessage"></div>
+        <div class="error" id="error"></div>
         
-        <div class="result-section" id="resultSection">
+        <div class="result-container" id="result-container">
             <h2>Analysis Result</h2>
-            <div class="review-box">
-                <p id="reviewText"></p>
-            </div>
-            <div class="sentiment-result" id="sentimentResult">
-                <i class="icon" id="sentimentIcon"></i>
-                <span id="sentimentText"></span>
-            </div>
-        </div>
-        
-        <div class="instructions">
-            <h3>How to get a Hugging Face API Token:</h3>
-            <ol>
-                <li>Go to <a href="https://huggingface.co/" target="_blank">huggingface.co</a></li>
-                <li>Create a free account or sign in</li>
-                <li>Go to your profile settings → Access Tokens</li>
-                <li>Create a new token or use an existing one</li>
-                <li>Copy and paste the token into the field above</li>
-            </ol>
+            <div class="review-text" id="review-text"></div>
+            <div class="sentiment-result" id="sentiment-result"></div>
         </div>
     </div>
-    
-    <footer>
-        <p>This app uses the distilbert-base-uncased-finetuned-sst-2-english model from Hugging Face</p>
-    </footer>
 
     <script src="app.js"></script>
 </body>
