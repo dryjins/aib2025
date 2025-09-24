@@ -3,27 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Analyzer Agent Prototype</title>
+    <title>Review Analyzer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papa-parse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
+        }
+        body {
+            padding: 20px;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
             background-color: #f5f5f5;
         }
         .container {
             background: white;
-            padding: 30px;
             border-radius: 10px;
+            padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         h1 {
-            color: #333;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            color: #333;
         }
         .input-group {
             margin-bottom: 20px;
@@ -34,137 +39,114 @@
             font-weight: bold;
             color: #555;
         }
-        input[type="text"] {
+        input {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            font-size: 16px;
-            box-sizing: border-box;
+            font-size: 14px;
         }
-        .button-group {
-            display: flex;
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         button {
-            padding: 12px 20px;
+            padding: 12px;
             border: none;
             border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        #loadReview {
             background-color: #007bff;
             color: white;
-            flex: 1;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        #loadReview:hover {
+        button:hover {
             background-color: #0056b3;
-        }
-        #analyzeSentiment {
-            background-color: #28a745;
-            color: white;
-            flex: 1;
-        }
-        #analyzeSentiment:hover {
-            background-color: #1e7e34;
-        }
-        #countNouns {
-            background-color: #ffc107;
-            color: #212529;
-            flex: 1;
-        }
-        #countNouns:hover {
-            background-color: #e0a800;
         }
         button:disabled {
             background-color: #6c757d;
             cursor: not-allowed;
         }
-        .review-display {
+        .review-card {
             background-color: #f8f9fa;
-            padding: 20px;
+            border: 1px solid #dee2e6;
             border-radius: 5px;
+            padding: 15px;
             margin-bottom: 20px;
             min-height: 100px;
-            border-left: 4px solid #007bff;
         }
-        .result-display {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        .result-box {
-            flex: 1;
-            padding: 15px;
-            border-radius: 5px;
+        .result-card {
             background-color: #f8f9fa;
-        }
-        .sentiment-result, .noun-result {
-            font-size: 24px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
             text-align: center;
-            margin-top: 10px;
         }
-        .loading {
-            color: #6c757d;
-            font-style: italic;
+        .result-value {
+            font-size: 24px;
+            margin-top: 10px;
         }
         .error {
-            color: #dc3545;
             background-color: #f8d7da;
-            padding: 10px;
+            border: 1px solid #f5c6cb;
             border-radius: 5px;
-            margin-top: 10px;
+            padding: 15px;
+            color: #721c24;
+            margin-bottom: 20px;
+            display: none;
         }
-        .success {
-            color: #155724;
-            background-color: #d4edda;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
+        .spinner {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .spinner i {
+            font-size: 24px;
+            color: #007bff;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Review Analyzer Agent Prototype</h1>
+        <h1>Review Analyzer</h1>
         
         <div class="input-group">
-            <label for="tokenInput">Hugging Face Token (optional):</label>
-            <input type="text" id="tokenInput" placeholder="Enter your Hugging Face token">
+            <label for="token">Hugging Face API Token (optional):</label>
+            <input type="text" id="token" placeholder="Enter your API token">
         </div>
         
-        <div class="button-group">
-            <button id="loadReview">Load Random Review</button>
+        <div class="buttons">
+            <button id="randomReview">Select Random Review</button>
+            <button id="analyzeSentiment">Analyze Sentiment</button>
+            <button id="countNouns">Count Nouns</button>
         </div>
         
-        <div class="review-display" id="reviewText">
-            Click "Load Random Review" to load a review
+        <div class="error" id="error"></div>
+        
+        <div class="spinner" id="spinner">
+            <i class="fas fa-spinner fa-spin"></i>
         </div>
         
-        <div class="button-group">
-            <button id="analyzeSentiment" disabled>Analyze Sentiment</button>
-            <button id="countNouns" disabled>Count Nouns</button>
+        <div class="review-card" id="reviewText">
+            Select a random review to begin analysis
         </div>
         
-        <div class="result-display">
-            <div class="result-box">
-                <h3>Sentiment Analysis</h3>
-                <div id="sentimentResult" class="sentiment-result">
-                    <i class="fas fa-question-circle"></i>
-                </div>
-                <div id="sentimentDetails"></div>
+        <div class="results">
+            <div class="result-card">
+                <div>Sentiment</div>
+                <div class="result-value" id="sentimentResult">❓</div>
             </div>
-            
-            <div class="result-box">
-                <h3>Noun Count</h3>
-                <div id="nounResult" class="noun-result">
-                    <i class="fas fa-question-circle"></i>
-                </div>
-                <div id="nounDetails"></div>
+            <div class="result-card">
+                <div>Noun Count Level</div>
+                <div class="result-value" id="nounResult">❓</div>
             </div>
         </div>
     </div>
