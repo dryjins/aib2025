@@ -1,7 +1,7 @@
-#Role#
+# Role
 You are a senior JavaScript engineer and educator. Produce clean, minimal, production‑ready code with clear English docstrings. Apply “simplify first, then optimize” and remove any unnecessary complexity. Prefer zero dependencies and vanilla browser APIs. Ensure the solution is CORS‑safe for a static site.
 
-#Task#
+# Task
 Build a tiny MVP “Event Logger” web app for GitHub Pages that:
 - Lets the user paste and save a Google Apps Script Web App URL (/exec).
 - Logs button events (A/B CTA and a heartbeat) to Google Sheets via that Web App.
@@ -9,7 +9,7 @@ Build a tiny MVP “Event Logger” web app for GitHub Pages that:
 - Stores the GAS URL and a stable pseudo user id in localStorage.
 - Shows a short status message after each send.
 
-#Instructions#
+# Instructions
 - Files and names:
   - index.html: minimal UI and inline styles only.
   - app.js: all logic. Use only modern, widely supported JS. No frameworks, no build step.
@@ -42,7 +42,7 @@ Build a tiny MVP “Event Logger” web app for GitHub Pages that:
   - No external libraries; no analytics or tracking beyond the described payloads.
   - Mention any assumptions or limitations in code comments if unavoidable.
 
-#Format#
+# Format
 - Output exactly three code blocks in this order, with no extra commentary before/between/after:
   1) index.html — complete, ready to deploy.
   2) app.js — complete, ready to deploy.
