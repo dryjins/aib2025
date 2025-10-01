@@ -1,14 +1,29 @@
 /**
- * MVP Logger with user-provided GAS URL.
- * - Stores the Apps Script Web App URL in localStorage.
- * - Sends JSON via fetch POST to the provided endpoint.
- * - Minimal buttons for A/B CTA and a heartbeat event.
+ * app.js — MVP Logger (CORS-safe)
+ *
+ * Purpose
+ * - Send cross-origin POSTs to a Google Apps Script Web App without CORS preflight.
+ * - Uses application/x-www-form-urlencoded via URLSearchParams (no custom headers).
+ *
+ * How it avoids preflight
+ * - No custom headers (e.g., no Content-Type: application/json).
+ * - Body encoded as form data; method is POST (simple request spec).
+ *
+ * Requirements
+ * - index.html contains:
+ *    - <input id="gasUrl"> and <button id="saveUrl">
+ *    - <button id="ctaA">, <button id="ctaB">, <button id="heartbeat">
+ *    - <div id="status">
+ * - Deploy Apps Script Web App as “Anyone” and use the /exec URL.
+ *
+ * Notes
+ * - For higher throughput, consider switching to Sheets API values.append server-side.
  */
 
 const LS_KEY_URL = "gas_url";
 const LS_KEY_UID = "uid";
 
-/** Generate or read a stable pseudo user id. */
+/** Get or create a stable pseudo user id. */
 function getUserId() {
   let uid = localStorage.getItem(LS_KEY_UID);
   if (!uid) {
@@ -18,60 +33,65 @@ function getUserId() {
   return uid;
 }
 
-/** Read GAS URL from input or storage. */
+/** Read the GAS URL from input or storage; hydrate input if stored. */
 function getGasUrl() {
   const input = document.getElementById("gasUrl");
-  const fromInput = (input?.value || "").trim();
-  if (fromInput) return fromInput;
-
-  const fromStore = (localStorage.getItem(LS_KEY_URL) || "").trim();
-  if (input && fromStore) input.value = fromStore;
-  return fromStore;
+  const entered = (input?.value || "").trim();
+  if (entered) return entered;
+  const saved = (localStorage.getItem(LS_KEY_URL) || "").trim();
+  if (input && saved) input.value = saved;
+  return saved;
 }
 
-/** Persist GAS URL from input. */
+/** Save the GAS URL from input after basic validation. */
 function saveGasUrl() {
-  const url = (document.getElementById("gasUrl")?.value || "").trim();
   const status = document.getElementById("status");
+  const url = (document.getElementById("gasUrl")?.value || "").trim();
   if (!url) {
-    status.textContent = "Please paste your Apps Script Web App URL (ending with /exec) and click Save URL.";
+    status.textContent = "Please paste your Apps Script Web App URL (ending with /exec).";
     return;
   }
-  try {
-    new URL(url);
-  } catch {
-    status.textContent = "Invalid URL. Check and try again.";
-    return;
-  }
+  try { new URL(url); } catch { status.textContent = "Invalid URL format."; return; }
   localStorage.setItem(LS_KEY_URL, url);
   status.textContent = "Saved Web App URL.";
 }
 
-/** Send one JSON log line to GAS doPost. */
-async function sendLog(payload) {
-  const url = getGasUrl();
+/**
+ * Send one event as a CORS simple request (no preflight).
+ * Payload fields are flattened into form data.
+ * Returns a Promise resolving to raw response text.
+ */
+async function sendLogSimple(payload) {
   const status = document.getElementById("status");
+  const url = getGasUrl();
   if (!url) {
     status.textContent = "Missing Web App URL. Paste it and click Save URL first.";
-    return { ok: false, error: "missing_url" };
+    return "MISSING_URL";
   }
+
+  const form = new URLSearchParams();
+  form.set("event", payload.event || "");
+  form.set("variant", payload.variant || "");
+  form.set("userId", payload.userId || "");
+  form.set("ts", String(payload.ts || Date.now()));
+  form.set("meta", JSON.stringify(payload.meta || {}));
+
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: form // application/x-www-form-urlencoded; no headers to avoid preflight
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    status.textContent = data?.ok ? "Logged ✅" : `Logged with warning: ${JSON.stringify(data)}`;
-    return data;
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+    status.textContent = "Logged ✅";
+    return text;
   } catch (err) {
     status.textContent = `Log failed: ${String(err)}`;
-    return { ok: false, error: String(err) };
+    return `ERROR: ${String(err)}`;
   }
 }
 
-/** Wire up UI. */
+/** Wire UI interactions. */
 (function init() {
   const status = document.getElementById("status");
   const saved = localStorage.getItem(LS_KEY_URL);
@@ -87,14 +107,14 @@ async function sendLog(payload) {
   const baseMeta = { page: location.pathname, ua: navigator.userAgent };
 
   document.getElementById("ctaA")?.addEventListener("click", () => {
-    sendLog({ event: "cta_click", variant: "A", userId, ts: Date.now(), meta: baseMeta });
+    sendLogSimple({ event: "cta_click", variant: "A", userId, ts: Date.now(), meta: baseMeta });
   });
 
   document.getElementById("ctaB")?.addEventListener("click", () => {
-    sendLog({ event: "cta_click", variant: "B", userId, ts: Date.now(), meta: baseMeta });
+    sendLogSimple({ event: "cta_click", variant: "B", userId, ts: Date.now(), meta: baseMeta });
   });
 
   document.getElementById("heartbeat")?.addEventListener("click", () => {
-    sendLog({ event: "heartbeat", userId, ts: Date.now(), meta: baseMeta });
+    sendLogSimple({ event: "heartbeat", userId, ts: Date.now(), meta: baseMeta });
   });
 })();
