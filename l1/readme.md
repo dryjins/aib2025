@@ -1,24 +1,31 @@
-### Prompt for Generating a Web App Code in DeepSeek Chat
+**Role:**  
+You are an expert front-end web developer specialized in building deployable static web apps using HTML, CSS, and vanilla JavaScript. You strictly adhere to specifications without omitting or modifying required implementation details.
 
-**Objective:**  
-You're an expert front-end developer. Create a complete, deployable web app for GitHub Pages that analyzes random product reviews from a TSV file using Hugging Face Inference API with a free sentiment analysis model. You MUST strictly follow all instructions without simplification or omission.
+**Context:**  
+We need to build a simple sentiment analysis web app that works entirely on the client side and can be deployed on GitHub Pages. The app should read product reviews from a local TSV file, choose a random review, and analyze its sentiment using the Hugging Face Inference API with the free model “siebert/sentiment-roberta-large-english.”
 
-**Key Requirements (MUST IMPLEMENT EXACTLY):**
-- **Files Structure:** Generate TWO separate files: `index.html` for UI (including styles and structure) and `app.js` for all logic. Do NOT combine them.
-- **Data Handling:** MUST use Papa Parse library (via CDN: `<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>`) to parse "reviews_test.tsv" file via fetch. Do NOT use manual parsing or other methods. Assume TSV has a 'text' column for reviews.
-- **User Input:** Include a text field in HTML for the user to enter their Hugging Face API token (optional for free tier, but include for rate limits).
-- **Functionality:**
-  - Load and parse the TSV using Papa Parse to extract an array of review texts.
-  - On button click: Select a random review text, display it, and call Hugging Face Inference API for the model "siebert/sentiment-roberta-large-english" (free for sentiment classification) using the token (if provided) to analyze the review's sentiment (classify as positive, negative, or neutral based on score).
-  - Based on the API response, display a thumbs-up icon for positive, thumbs-down for negative, or question mark for neutral.
-- **Technical Details:**
-  - Use `fetch` for API calls with the latest Hugging Face format (POST to `https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english`, body: { "inputs": reviewText }, optional Authorization header).
-  - Handle errors gracefully (e.g., network errors, invalid token, API rate limits).
-  - Ensure the app is pure HTML/JS (no server-side code). Use vanilla JavaScript.
-  - Parse API response: [[{label: 'POSITIVE', score: number}]]. If score > 0.5 and label 'POSITIVE' → positive; 'NEGATIVE' → negative; else neutral.
-  - Include Font Awesome via CDN for icons: `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">`.
+**Instruction:**  
+Create a fully deployable web app following these requirements exactly:  
+- **File Structure**: Generate two separate files: `index.html` for the UI and `app.js` for the logic. Do not combine them.  
+- **Dependencies**: Use Papa Parse (CDN) for TSV parsing and Font Awesome (CDN) for icons.  
+- **Data**: Fetch and parse a local file named `reviews_test.tsv` containing a "text" column.  
+- **User Input**: Include an optional Hugging Face API token input field.  
+- **Main Functionality**:
+  - On button click, randomly select a review, display it, and send it to the Hugging Face API for sentiment classification.
+  - Use the endpoint `https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english` with POST body `{ "inputs": reviewText }`.
+  - Include `Authorization: Bearer <token>` header only if the user provides one.  
+  - Parse the API response (e.g., `[[{label: 'POSITIVE', score: 0.98}]]`).  
+  - Display an icon based on sentiment: thumbs-up for positive, thumbs-down for negative, question mark for neutral (score ≤ 0.5 or uncertain).  
+- **Error Handling**: Handle invalid tokens, network issues, or API limits gracefully.  
+- **Restrictions**:  
+  - No external frameworks or servers. Only pure HTML/JS.  
+  - No custom parsing logic — must use Papa Parse.  
+- **CDN Links**:
+  - Papa Parse: `https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js`  
+  - Font Awesome: `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`
 
-**Output Format:**  
-- Provide full code for `index.html` in a code block.  
-- Provide full code for `app.js` in a separate code block.  
-- Do NOT add extra explanations, comments, or code outside these blocks.
+**Format:**  
+Provide output as two complete and separate code blocks:  
+1. `index.html`  
+2. `app.js`  
+Do **not** include extra explanations or comments outside these blocks.
